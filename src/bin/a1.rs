@@ -9,10 +9,10 @@
 // * Use the println macro to display messages to the terminal
 
 fn first_name() {
-    print!("Lokesh Kumar ");
+    print!("Lokesh ");
 }
 fn last_name() {
-    print!("Nalot");
+    print!("Kumar");
 }
 fn main() {
     first_name();
