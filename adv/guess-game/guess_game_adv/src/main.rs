@@ -1,5 +1,4 @@
 use rand::Rng;
-use std::cmp::Ordering;
 use std::io;
 
 #[derive(Debug)]
@@ -8,17 +7,26 @@ struct GuessInput {
 }
 
 impl GuessInput {
-    fn value(&self) -> u32 {
+    pub fn new(value: u32) -> GuessInput {
+        if value < 1 {
+            panic!("Guess value must be >= 1, got {}.", value);
+        } else if value > 100 {
+            panic!("Guess value must be <= 100, got {}.", value);
+        }
+        GuessInput { value }
+    }
+
+    pub fn value(&self) -> u32 {
         self.value
     }
 
-    fn compare(&self, value: u32) -> Ordering {
+    pub fn compare(&self, value: u32) -> i32 {
         if self.value == value {
-            Ordering::Equal
+            0
         } else if self.value > value {
-            Ordering::Greater
+            1
         } else {
-            Ordering::Less
+            -1
         }
     }
 }
@@ -28,10 +36,8 @@ fn main() {
 
     let secret_number: u32 = rand::thread_rng().gen_range(1..=100);
 
-    println!("The secret number is: {}", secret_number);
-
     loop {
-        println!("Please input your guess:");
+        println!("Please input your guess(between 1 and 100):");
 
         let mut guess = String::new();
 
@@ -39,17 +45,21 @@ fn main() {
             .read_line(&mut guess)
             .expect("Failed to read line!");
 
+        // validating user inputs an unsigned number not a string or any other type
         let guess: GuessInput = match guess.trim().parse() {
-            Ok(num) => GuessInput { value: num },
-            Err(_) => continue,
+            Ok(num) => GuessInput::new(num),
+            Err(_) => {
+                println!("Please type an unsigned number!");
+                continue;
+            }
         };
 
         println!("You guessed: {}", guess.value());
 
         match guess.compare(secret_number) {
-            Ordering::Less => println!("Too small!"),
-            Ordering::Greater => println!("Too big!"),
-            Ordering::Equal => {
+            -1 => println!("Too small!"),
+            1 => println!("Too big!"),
+            _ => {
                 println!("You win!");
                 break;
             }
