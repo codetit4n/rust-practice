@@ -4,26 +4,26 @@ use std::io::{stdin, stdout, Read, Write};
 #[derive(Debug)]
 enum Choice {
     Exit,
-    Add,
-    DepartmentPeople,
-    SortedList,
+    AddEmployee,
+    DepartmentEmployees,
+    SortedListEmployees,
 }
 
 impl Choice {
     fn choice(i: u32) -> Option<Choice> {
         match i {
             0 => Some(Choice::Exit),
-            1 => Some(Choice::Add),
-            2 => Some(Choice::DepartmentPeople),
-            3 => Some(Choice::SortedList),
+            1 => Some(Choice::AddEmployee),
+            2 => Some(Choice::DepartmentEmployees),
+            3 => Some(Choice::SortedListEmployees),
             _ => None,
         }
     }
 }
 
 fn main() {
-    let mut department_to_names = HashMap::<String, Vec<String>>::new();
-    let mut name_to_department = HashMap::<String, String>::new();
+    let mut department_to_emps = HashMap::<String, Vec<String>>::new();
+    let mut emp_to_department = HashMap::<String, String>::new();
     loop {
         let mut choice = String::new();
         clear_screen();
@@ -39,7 +39,7 @@ fn main() {
             Ok(i) => match Choice::choice(i) {
                 Some(ch) => match ch {
                     Choice::Exit => break,
-                    Choice::Add => {
+                    Choice::AddEmployee => {
                         clear_screen();
                         println!("Input in format 'Add [Employee] to [Department]':");
                         let mut input = String::new();
@@ -50,17 +50,17 @@ fn main() {
                         let words: Vec<&str> = input.split_whitespace().collect();
                         match words.as_slice() {
                             ["Add", name, "to", department] => {
-                                add_name_to_department(
-                                    &mut department_to_names,
-                                    &mut name_to_department,
+                                add_emp_to_department(
+                                    &mut department_to_emps,
+                                    &mut emp_to_department,
                                     department,
                                     name,
                                 );
                             }
                             ["add", name, "to", department] => {
-                                add_name_to_department(
-                                    &mut department_to_names,
-                                    &mut name_to_department,
+                                add_emp_to_department(
+                                    &mut department_to_emps,
+                                    &mut emp_to_department,
                                     department,
                                     name,
                                 );
@@ -71,7 +71,7 @@ fn main() {
                             }
                         }
                     }
-                    Choice::DepartmentPeople => {
+                    Choice::DepartmentEmployees => {
                         clear_screen();
                         println!("Enter department:");
                         let mut input = String::new();
@@ -79,21 +79,23 @@ fn main() {
                             .read_line(&mut input)
                             .expect("Failed to read from stdin");
                         input = input.trim().to_string();
-                        let names: Vec<String> = if let Some(vec) = department_to_names.get(&input)
-                        {
+                        let names: Vec<String> = if let Some(vec) = department_to_emps.get(&input) {
                             vec.to_vec()
                         } else {
                             println!("No employees in this department yet!");
                             pause();
                             continue;
                         };
-                        println!("List of employees in this department: {:?}", names);
+                        println!("Employees of {input}:");
+                        for val in &names {
+                            println!("{val}")
+                        }
                         pause();
                     }
-                    Choice::SortedList => {
+                    Choice::SortedListEmployees => {
                         clear_screen();
                         let mut to_show: Vec<String> = Vec::new();
-                        for (k, v) in &name_to_department {
+                        for (k, v) in &emp_to_department {
                             to_show.push(format!("{k} at {v}"));
                         }
                         if to_show.len() > 0 {
@@ -120,20 +122,20 @@ fn main() {
     }
 }
 
-fn add_name_to_department(
-    department_to_names: &mut HashMap<String, Vec<String>>,
-    name_to_department: &mut HashMap<String, String>,
+fn add_emp_to_department(
+    department_to_emps: &mut HashMap<String, Vec<String>>,
+    emp_to_department: &mut HashMap<String, String>,
     department: &str,
     name: &str,
 ) {
-    let mut names: Vec<String> = if let Some(vec) = department_to_names.get(department) {
+    let mut names: Vec<String> = if let Some(vec) = department_to_emps.get(department) {
         vec.to_vec()
     } else {
         Vec::new()
     };
     names.push(name.to_string());
-    name_to_department.insert(name.to_string(), department.to_string());
-    department_to_names.insert(department.to_string(), names);
+    emp_to_department.insert(name.to_string(), department.to_string());
+    department_to_emps.insert(department.to_string(), names);
     println!("Successfully added {name} to {department}!");
     pause();
 }
