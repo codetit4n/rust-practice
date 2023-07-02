@@ -4,8 +4,16 @@ From the rust book: https://doc.rust-lang.org/book/ch12-00-an-io-project.html
 
 ### Usage
 
+- Case sensitive search
+
 ```rust
 cargo run -- [search_string] [file.txt]
+```
+
+- Case insensitive search
+
+```rust
+IGNORE_CASE=1 cargo run -- [search_string] [file.txt]
 ```
 
 > search_string : string to search.
