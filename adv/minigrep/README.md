@@ -6,13 +6,13 @@ From the rust book: https://doc.rust-lang.org/book/ch12-00-an-io-project.html
 
 - Case sensitive search
 
-```rust
+```bash
 cargo run -- [search_string] [file.txt]
 ```
 
 - Case insensitive search
 
-```rust
+```bash
 IGNORE_CASE=1 cargo run -- [search_string] [file.txt]
 ```
 
