@@ -1,3 +1,3 @@
-# rust-practice-programs
+# rust-practice
 
-Rust practice
+Putting my rust knowledge to work
