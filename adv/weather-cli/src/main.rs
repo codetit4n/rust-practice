@@ -1,21 +1,33 @@
-use std::env;
-
 use clap::Parser;
-
 use dotenv;
 use reqwest;
+use serde::Deserialize;
+use std::env;
 
-// using hardcoded values for now
-const LAT: f32 = 30.7333;
-const LON: f32 = 76.7794;
-
-#[derive(Parser)]
-#[command(name = "forecast")]
+#[derive(Parser, Debug)]
+#[command(name = "weather")]
 #[command(about = "Weather in your terminal", long_about = None)]
 struct Args {
-    // Number of days for the forcast
-    #[arg(short, default_value_t = 0)]
-    days: u8,
+    #[clap(long)]
+    lat: f32,
+    #[clap(long)]
+    lon: f32,
+}
+
+#[derive(Deserialize, Debug)]
+struct Weather {
+    description: String,
+}
+
+#[derive(Deserialize, Debug)]
+struct CurrentWeatherMain {
+    temp: f32,
+}
+
+#[derive(Deserialize, Debug)]
+struct CurrentWeather {
+    weather: Vec<Weather>,
+    main: CurrentWeatherMain,
 }
 
 fn main() -> Result<(), reqwest::Error> {
@@ -36,15 +48,21 @@ fn main() -> Result<(), reqwest::Error> {
 
     let api_key = api_key.unwrap();
 
-    //    let args: Args = Args::parse();
+    let args: Args = Args::parse();
+
+    let lat_val = args.lat;
+    let lon_val = args.lon;
 
     let url = format!(
-        "https://api.openweathermap.org/data/2.5/forecast?lat={LAT}&lon={LON}&appid={api_key}&units=metric"
+        "https://api.openweathermap.org/data/2.5/weather?lat={lat_val}&lon={lon_val}&appid={api_key}&units=metric"
     );
 
-    let body: String = reqwest::blocking::get(url)?.text()?;
+    let weather: CurrentWeather = reqwest::blocking::get(url)?.json()?;
 
-    println!("{:?}", body);
+    println!(
+        "Current weather: {}, {}°C",
+        weather.weather[0].description, weather.main.temp
+    );
 
     Ok(())
 }

@@ -313,15 +313,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
-name = "forecast"
-version = "0.1.0"
-dependencies = [
- "clap 4.4.4",
- "dotenv",
- "reqwest",
-]
-
-[[package]]
 name = "foreign-types"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1197,6 +1188,16 @@ name = "wasm-bindgen-shared"
 version = "0.2.87"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ca6ad05a4870b2bf5fe995117d3728437bd27d7cd5f06f13c17443ef369775a1"
+
+[[package]]
+name = "weather-cli"
+version = "0.1.0"
+dependencies = [
+ "clap 4.4.4",
+ "dotenv",
+ "reqwest",
+ "serde",
+]
 
 [[package]]
 name = "web-sys"
