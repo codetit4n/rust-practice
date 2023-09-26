@@ -17,3 +17,6 @@ cargo run -- --lat LATITUDE --lon LONGITUDE
 ```
 
 > Enter values of your latitude and longitude in place of `LATITUDE` and `LONGITUDE`
+
+### Example output
+![weather-cli](https://github.com/codeTIT4N/rust-practice/assets/71545386/5204f1b6-53e7-42d7-8ef6-14a80c7b36e5)
