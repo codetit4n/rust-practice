@@ -1,4 +1,4 @@
-use crate::model::conversation::Conversation;
+use crate::model::conversation::{Conversation, Message};
 use leptos::*;
 use leptos_meta::*;
 
@@ -9,17 +9,28 @@ pub fn App() -> impl IntoView {
 
     let (conversation, set_conversation) = create_signal(Conversation::new());
 
+    let send = create_action(move |msg: &String| {
+        let user_msg = Message {
+            is_user: true,
+            text: msg.clone(),
+        };
+        set_conversation.update(move |c| {
+            c.message.push(user_msg);
+        })
+
+        // TODO: converse
+    });
+
     view! {
-            // injects a stylesheet into the document <head>
-            // id=leptos means cargo-leptos will hot-reload this stylesheet
-            <Stylesheet id="leptos" href="/pkg/leptos_start.css"/>
+        // injects a stylesheet into the document <head>
+        // id=leptos means cargo-leptos will hot-reload this stylesheet
+        <Stylesheet id="leptos" href="/pkg/leptos_start.css"/>
 
-            // sets the document title
-            <Title text="AI Chatbot in rust"/>
-
-    //        <ChatArea/>
-    //        <TypeAres/>
-        }
+        // sets the document title
+        <Title text="AI Chatbot in rust"/>
+        <ChatArea conversation/>
+        <TypeAres send/>
+    }
 }
 
 /// 404 - Not Found
