@@ -4,3 +4,14 @@
 > Incomplete!
 
 Referring to: https://www.youtube.com/watch?v=XZtlD_m59sM&list=PLsQuQ3zSmVYGvrY9KNSupS7VnbOItOzT2
+
+### cargo watch
+
+```bash
+cargo watch -q -c -w src/ -x run
+```
+
+- `-q` quiet
+- `-c` clear between each recompile
+- `-w` watch on this folder(src in this case)
+- `-x` execute this command(run in this case)
