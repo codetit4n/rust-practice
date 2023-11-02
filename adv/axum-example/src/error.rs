@@ -5,6 +5,8 @@ use axum::response::{IntoResponse, Response};
 #[derive(Debug)]
 pub enum Error {
     LoginFail,
+    // model errors
+    TicketDeleteFaileIdNotFound { id: u64 },
 }
 
 // IntoResponse is a trait from axum crate for error handling
