@@ -5,6 +5,10 @@ use axum::response::{IntoResponse, Response};
 #[derive(Debug)]
 pub enum Error {
     LoginFail,
+
+    // auth errors
+    AuthFailNoAuthTokenCookie,
+    AuthFailTokenWrongFormat,
     // model errors
     TicketDeleteFaileIdNotFound { id: u64 },
 }
