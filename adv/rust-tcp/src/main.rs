@@ -10,10 +10,10 @@ struct Quad {
 }
 
 fn main() -> io::Result<()> {
-    let connections: HashMap<Quad, tcp::State> = Default::default();
+    let mut connections: HashMap<Quad, tcp::Connection> = Default::default();
 
     // Create a new TUN interface in TUN mode
-    let nic = tun_tap::Iface::new("tun0", tun_tap::Mode::Tun)?;
+    let mut nic = tun_tap::Iface::new("tun0", tun_tap::Mode::Tun)?;
 
     // Define a buffer of size 1504 bytes (max ethernet frame size without CRC)
     // to store the received data
@@ -33,26 +33,27 @@ fn main() -> io::Result<()> {
         }
 
         match etherparse::Ipv4HeaderSlice::from_slice(&buf[4..nbytes]) {
-            Ok(p) => {
-                let src = p.source_addr();
-                let dst = p.destination_addr();
-                let proto = p.protocol(); // ip level protocol https://www.iana.org/assignments/protocol-numbers/protocol-numbers.xhtml
+            Ok(iph) => {
+                let src = iph.source_addr();
+                let dst = iph.destination_addr();
+                let proto = iph.protocol(); // ip level protocol https://www.iana.org/assignments/protocol-numbers/protocol-numbers.xhtml
 
                 if proto != 0x06 {
                     //not tcp
                     continue;
                 }
 
-                match etherparse::TcpHeaderSlice::from_slice(&buf[4 + p.slice().len()..]) {
-                    Ok(p) => {
-                        //todo!
-                        eprintln!(
-                            "{} -> {} {}b of tcp to port {}",
-                            src,
-                            dst,
-                            p.slice().len(),
-                            p.destination_port()
-                        )
+                match etherparse::TcpHeaderSlice::from_slice(&buf[4 + iph.slice().len()..nbytes]) {
+                    Ok(tcph) => {
+                        let datai = 4 + iph.slice().len() + tcph.slice().len();
+
+                        connections
+                            .entry(Quad {
+                                src: (src, tcph.source_port()),
+                                dst: (dst, tcph.destination_port()),
+                            })
+                            .or_default()
+                            .on_packet(&mut nic, iph, tcph, &buf[datai..nbytes])?;
                     }
 
                     Err(e) => {
