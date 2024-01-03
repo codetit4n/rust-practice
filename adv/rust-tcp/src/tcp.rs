@@ -4,13 +4,16 @@ enum State {
     //Listen,
     SynRecv,
     Estab,
+    FinWait1,
+    FinWait2,
+    Closing,
 }
 
 impl State {
     fn is_synchronized(&self) -> bool {
         match *self {
             State::SynRecv => false,
-            State::Estab => true,
+            State::Estab | State::FinWait1 | State::Closing | State::FinWait2 => true,
         }
     }
 }
@@ -187,6 +190,21 @@ impl Connection {
     }
 
     fn send_rst(&mut self, nic: &mut tun_tap::Iface) -> io::Result<()> {
+        // todo: fix sequence numbers here
+        // If the incoming segment has an ACK field, the reset takes its
+        // sequence number from the ACK field of the segment, otherwise the
+        // reset has sequence number zero and the ACK field is set to the sum
+        // of the sequence number and segment length of the incoming segment.
+        // The connection remains in the same state.
+        //
+        // todo: handle synchornized RST
+        // If the connection is in a synchronized state (ESTABLISHED,
+        // FIN-WAIT-1, FIN-WAIT-2, CLOSE-WAIT, CLOSING, LAST-ACK, TIME-WAIT),
+        // any unacceptable segment (out of window sequence number or
+        // unacceptible acknowledgment number) must elicit only an empty
+        // acknowledgment segment containing the current send-sequence number
+        // and an acknowledgment indicating the next sequence number expected
+        // to be received, and the connection remains in the same state.
         self.tcp.rst = true;
         self.tcp.sequence_number = 0;
         self.tcp.acknowledgment_number = 0;
@@ -214,6 +232,8 @@ impl Connection {
             }
             return Ok(());
         }
+
+        self.send.una = ackn;
 
         //
         // valid segment check. ok if it acks atleast one byte, which means atleast one of the
@@ -267,6 +287,8 @@ impl Connection {
             }
         }
 
+        self.recv.nxt = seqn.wrapping_add(slen);
+
         match self.state {
             State::SynRecv => {
                 // expect to get an ACK for our SYN
@@ -278,10 +300,37 @@ impl Connection {
                 // only sent one byte (the SYN)
                 self.state = State::Estab;
 
-                // now let`s terminate the connection
+                // now let`s terminate the connection - closing means i have no more data to send
+                // but you can still receive
+                // todo: needs to be stored in the restarsmission que
+                self.tcp.fin = true;
+                self.write(nic, &[])?;
+                self.state = State::FinWait1;
             }
             State::Estab => {
                 unimplemented!();
+            }
+            State::FinWait1 => {
+                if !tcph.fin() || !data.is_empty() {
+                    unimplemented!();
+                }
+
+                // must have ACKed our FIN, since we detected at least one acked byte, and we have
+                // only sent one byte (the FIN)
+
+                self.state = State::FinWait2;
+            }
+            State::Closing => {
+                if !tcph.fin() || !data.is_empty() {
+                    unimplemented!();
+                }
+
+                // must have ACKed our FIN, since we detected at least one acked byte, and we have
+                // only sent one byte (the FIN)
+
+                self.tcp.fin = false;
+                self.write(nic, &[])?;
+                self.state = State::Closing;
             }
         }
         Ok(())
