@@ -6,14 +6,14 @@ enum State {
     Estab,
     FinWait1,
     FinWait2,
-    Closing,
+    TimeWait,
 }
 
 impl State {
     fn is_synchronized(&self) -> bool {
         match *self {
             State::SynRecv => false,
-            State::Estab | State::FinWait1 | State::Closing | State::FinWait2 => true,
+            State::Estab | State::FinWait1 | State::FinWait2 | State::TimeWait => true,
         }
     }
 }
@@ -162,7 +162,8 @@ impl Connection {
             self.tcp.header_len() as usize + self.ip.header_len() as usize + payload.len(),
         );
 
-        self.ip.set_payload_len(size);
+        self.ip
+            .set_payload_len(size - self.ip.header_len() as usize);
 
         // not needed since the kernel does this for us
         //self.tcp.checksum = self.tcp
@@ -220,21 +221,6 @@ impl Connection {
         data: &'a [u8],
     ) -> io::Result<()> {
         // first check that sequence numbers are valid (RFC 793, 3.3)
-        // acceptable ack check
-        // SND.UNA < SEG.ACK =< SND.NXT
-        // remember wrapping
-
-        let ackn = tcph.acknowledgment_number();
-        if !is_between_wrapped(self.send.una, ackn, self.send.nxt.wrapping_add(1)) {
-            if !self.state.is_synchronized() {
-                // according to Reset Generation, we should send a RST
-                self.send_rst(nic);
-            }
-            return Ok(());
-        }
-
-        self.send.una = ackn;
-
         //
         // valid segment check. ok if it acks atleast one byte, which means atleast one of the
         // following is true:
@@ -288,49 +274,59 @@ impl Connection {
         }
 
         self.recv.nxt = seqn.wrapping_add(slen);
+        // TODO: If not acceptale send ACK
+        // <SEQ=SND.NXT><ACK=RCV.NXT><CTL=ACK>
 
-        match self.state {
-            State::SynRecv => {
-                // expect to get an ACK for our SYN
-                if !tcph.ack() {
-                    return Ok(());
-                }
+        if !tcph.ack() {
+            return Ok(());
+        }
 
+        let ackn = tcph.acknowledgment_number();
+        if let State::SynRecv = self.state {
+            if !is_between_wrapped(
+                self.send.una.wrapping_sub(1),
+                ackn,
+                self.send.nxt.wrapping_add(1),
+            ) {
                 // must have ACKed our SYN, since we detected at least one acked byte, and we have
                 // only sent one byte (the SYN)
                 self.state = State::Estab;
-
-                // now let`s terminate the connection - closing means i have no more data to send
-                // but you can still receive
-                // todo: needs to be stored in the restarsmission que
-                self.tcp.fin = true;
-                self.write(nic, &[])?;
-                self.state = State::FinWait1;
+            } else {
+                //TODO: <SEQ=SEG.ACK><CTL=RST>
             }
-            State::Estab => {
-                unimplemented!();
+        };
+
+        if let State::Estab = self.state {
+            if !is_between_wrapped(self.send.una, ackn, self.send.nxt.wrapping_add(1)) {
+                return Ok(());
             }
-            State::FinWait1 => {
-                if !tcph.fin() || !data.is_empty() {
-                    unimplemented!();
-                }
 
-                // must have ACKed our FIN, since we detected at least one acked byte, and we have
-                // only sent one byte (the FIN)
+            self.send.una = ackn;
+            //TODO
+            assert!(data.is_empty());
 
+            // now let`s terminate the connection - closing means i have no more data to send
+            // but you can still receive
+            // todo: needs to be stored in the restarsmission que
+            self.tcp.fin = true;
+            self.write(nic, &[])?;
+            self.state = State::FinWait1;
+        }
+        if let State::FinWait1 = self.state {
+            if self.send.una == self.send.iss + 2 {
+                // our FIN has been ACKed
                 self.state = State::FinWait2;
             }
-            State::Closing => {
-                if !tcph.fin() || !data.is_empty() {
-                    unimplemented!();
+        }
+
+        if tcph.fin() {
+            match self.state {
+                State::FinWait2 => {
+                    //we're done with the connection
+                    self.write(nic, &[])?;
+                    self.state = State::TimeWait;
                 }
-
-                // must have ACKed our FIN, since we detected at least one acked byte, and we have
-                // only sent one byte (the FIN)
-
-                self.tcp.fin = false;
-                self.write(nic, &[])?;
-                self.state = State::Closing;
+                _ => unimplemented!(),
             }
         }
         Ok(())
