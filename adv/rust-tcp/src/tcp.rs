@@ -99,7 +99,7 @@ impl Connection {
         }
 
         let iss = 0;
-        let wnd = 10;
+        let wnd = 1024;
 
         let mut c = Connection {
             state: State::SynRecv,
@@ -165,10 +165,10 @@ impl Connection {
         self.ip
             .set_payload_len(size - self.ip.header_len() as usize);
 
-        // not needed since the kernel does this for us
-        //self.tcp.checksum = self.tcp
-        //    .calc_checksum_ipv4(&self.ip, &[])
-        //    .expect("Failed to compute checksum!");
+        self.tcp.checksum = self
+            .tcp
+            .calc_checksum_ipv4(&self.ip, &[])
+            .expect("Failed to compute checksum!");
 
         // write out the headers
         use std::io::Write;
@@ -255,22 +255,33 @@ impl Connection {
             slen += 1;
         };
         let wend = self.recv.nxt.wrapping_add(self.recv.wnd as u32);
-        if slen == 0 && !tcph.syn() && !tcph.fin() {
+        let okay = if slen == 0 && !tcph.syn() && !tcph.fin() {
             if self.recv.wnd == 0 {
                 if seqn != self.recv.nxt {
-                    return Ok(());
+                    false
+                } else {
+                    true
                 }
             } else if !is_between_wrapped(self.recv.nxt.wrapping_sub(1), seqn, wend) {
-                return Ok(());
+                false
+            } else {
+                true
             }
         } else {
             if self.recv.wnd == 0 {
-                return Ok(());
+                false
             } else if !is_between_wrapped(self.recv.nxt.wrapping_sub(1), seqn, wend)
                 && !is_between_wrapped(self.recv.nxt.wrapping_sub(1), seqn + slen - 1, wend)
             {
-                return Ok(());
+                false
+            } else {
+                true
             }
+        };
+
+        if !okay {
+            self.write(nic, &[])?;
+            return Ok(());
         }
 
         self.recv.nxt = seqn.wrapping_add(slen);
@@ -283,7 +294,7 @@ impl Connection {
 
         let ackn = tcph.acknowledgment_number();
         if let State::SynRecv = self.state {
-            if !is_between_wrapped(
+            if is_between_wrapped(
                 self.send.una.wrapping_sub(1),
                 ackn,
                 self.send.nxt.wrapping_add(1),
@@ -296,7 +307,7 @@ impl Connection {
             }
         };
 
-        if let State::Estab = self.state {
+        if let State::Estab | State::FinWait1 | State::FinWait2 = self.state {
             if !is_between_wrapped(self.send.una, ackn, self.send.nxt.wrapping_add(1)) {
                 return Ok(());
             }
@@ -305,12 +316,14 @@ impl Connection {
             //TODO
             assert!(data.is_empty());
 
-            // now let`s terminate the connection - closing means i have no more data to send
-            // but you can still receive
-            // todo: needs to be stored in the restarsmission que
-            self.tcp.fin = true;
-            self.write(nic, &[])?;
-            self.state = State::FinWait1;
+            if let State::Estab = self.state {
+                // now let`s terminate the connection - closing means i have no more data to send
+                // but you can still receive
+                // todo: needs to be stored in the restarsmission que
+                self.tcp.fin = true;
+                self.write(nic, &[])?;
+                self.state = State::FinWait1;
+            }
         }
         if let State::FinWait1 = self.state {
             if self.send.una == self.send.iss + 2 {
