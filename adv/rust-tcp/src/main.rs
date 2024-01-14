@@ -39,7 +39,7 @@ fn main() -> io::Result<()> {
                 let proto = iph.protocol(); // ip level protocol https://www.iana.org/assignments/protocol-numbers/protocol-numbers.xhtml
 
                 if proto != 0x06 {
-                    //not tcp
+                    //not a tcp packet
                     continue;
                 }
 
@@ -75,7 +75,7 @@ fn main() -> io::Result<()> {
                     }
                 }
             }
-            Err(e) => {
+            Err(_e) => {
                 //eprintln!("ignoring weird packet {:?}", e);
             }
         }

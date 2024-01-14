@@ -9,15 +9,6 @@ enum State {
     TimeWait,
 }
 
-impl State {
-    fn is_synchronized(&self) -> bool {
-        match *self {
-            State::SynRecv => false,
-            State::Estab | State::FinWait1 | State::FinWait2 | State::TimeWait => true,
-        }
-    }
-}
-
 pub struct Connection {
     state: State,
     send: SendSequenceSpace,
@@ -151,6 +142,29 @@ impl Connection {
         Ok(Some(c))
     }
 
+    fn send_rst(&mut self, nic: &mut tun_tap::Iface) -> io::Result<()> {
+        // todo: fix sequence numbers here
+        // If the incoming segment has an ACK field, the reset takes its
+        // sequence number from the ACK field of the segment, otherwise the
+        // reset has sequence number zero and the ACK field is set to the sum
+        // of the sequence number and segment length of the incoming segment.
+        // The connection remains in the same state.
+        //
+        // todo: handle synchornized RST
+        // If the connection is in a synchronized state (ESTABLISHED,
+        // FIN-WAIT-1, FIN-WAIT-2, CLOSE-WAIT, CLOSING, LAST-ACK, TIME-WAIT),
+        // any unacceptable segment (out of window sequence number or
+        // unacceptible acknowledgment number) must elicit only an empty
+        // acknowledgment segment containing the current send-sequence number
+        // and an acknowledgment indicating the next sequence number expected
+        // to be received, and the connection remains in the same state.
+        self.tcp.rst = true;
+        self.tcp.sequence_number = 0;
+        self.tcp.acknowledgment_number = 0;
+        self.write(nic, &[])?;
+        Ok(())
+    }
+
     fn write(&mut self, nic: &mut tun_tap::Iface, payload: &[u8]) -> io::Result<usize> {
         let mut buf = [0u8; 1500];
         self.tcp.sequence_number = self.send.nxt;
@@ -188,29 +202,6 @@ impl Connection {
         }
         nic.send(&buf[..buf.len() - unwritten])?;
         Ok(payload_bytes)
-    }
-
-    fn send_rst(&mut self, nic: &mut tun_tap::Iface) -> io::Result<()> {
-        // todo: fix sequence numbers here
-        // If the incoming segment has an ACK field, the reset takes its
-        // sequence number from the ACK field of the segment, otherwise the
-        // reset has sequence number zero and the ACK field is set to the sum
-        // of the sequence number and segment length of the incoming segment.
-        // The connection remains in the same state.
-        //
-        // todo: handle synchornized RST
-        // If the connection is in a synchronized state (ESTABLISHED,
-        // FIN-WAIT-1, FIN-WAIT-2, CLOSE-WAIT, CLOSING, LAST-ACK, TIME-WAIT),
-        // any unacceptable segment (out of window sequence number or
-        // unacceptible acknowledgment number) must elicit only an empty
-        // acknowledgment segment containing the current send-sequence number
-        // and an acknowledgment indicating the next sequence number expected
-        // to be received, and the connection remains in the same state.
-        self.tcp.rst = true;
-        self.tcp.sequence_number = 0;
-        self.tcp.acknowledgment_number = 0;
-        self.write(nic, &[])?;
-        Ok(())
     }
 
     pub fn on_packet<'a>(
