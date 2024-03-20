@@ -7,3 +7,13 @@ rustflags = ["-C", "link-args=/ENTRY:_start /SUBSYSTEM:console"]
 [target.'cfg(target_os = "macos")']
 rustflags = ["-C", "link-args=-e __start -static -nostartfiles"]
 
+[target.'cfg(target_os = "none")']
+runner = "bootimage runner"
+
+[unstable]
+build-std = ["core", "compiler_builtins"] # tells cargo to build core and compiler_builtins
+build-std-features = ["compiler-builtins-mem"] # tells cargo to enable the mem feature of compiler_builtins
+
+[build]
+target = "x86_64-rusty_os.json" # tells cargo to use the x86_64-rusty_os.json file as the target specification
+

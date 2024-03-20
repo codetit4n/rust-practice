@@ -5,8 +5,20 @@
 
 Following blog series: https://os.phil-opp.com/
 
-#### Run and pass flag for linker:
+#### Create the bootimage
 
 ```bash
-cargo rustc -- -C link-arg=-nostartfiles
+cargo bootimage
+```
+
+#### Booting in QEMU
+
+```bash
+qemu-system-x86_64 -drive format=raw,file=target/x86_64-rusty_os/debug/bootimage-rusty_os.bin
+```
+
+#### Using the runner
+
+```bash
+cargo run
 ```
