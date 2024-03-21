@@ -1,7 +1,6 @@
 # CRUD API
 
 A very basic CRUD API in rust containerized using docker.
-Find it on docker hub: https://hub.docker.com/r/codetit4n/rustcrudapi
 
 Ref: https://www.youtube.com/watch?v=vhNoiBOuW94
 
