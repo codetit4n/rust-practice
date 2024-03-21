@@ -54,9 +54,9 @@ fn handle_client(mut stream: TcpStream) {
 
             let (status_line, content) = match &*request {
                 r if r.starts_with("GET /status") => handle_status_request(r),
+                r if r.starts_with("GET /users") => handle_get_all_request(r),
                 r if r.starts_with("POST /users") => handle_post_request(r),
                 r if r.starts_with("GET /users/") => handle_get_request(r),
-                r if r.starts_with("GET /users") => handle_get_all_request(r),
                 r if r.starts_with("PUT /users/") => handle_put_request(r),
                 r if r.starts_with("DELETE /users/") => handle_delete_request(r),
                 _ => (NOT_FOUND.to_owned(), "404 Not found".to_owned()),
