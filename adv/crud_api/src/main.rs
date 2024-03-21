@@ -53,6 +53,7 @@ fn handle_client(mut stream: TcpStream) {
             request.push_str(String::from_utf8_lossy(&buffer[..size]).as_ref());
 
             let (status_line, content) = match &*request {
+                r if r.starts_with("GET /status") => handle_status_request(r),
                 r if r.starts_with("POST /users") => handle_post_request(r),
                 r if r.starts_with("GET /users/") => handle_get_request(r),
                 r if r.starts_with("GET /users") => handle_get_all_request(r),
@@ -72,6 +73,10 @@ fn handle_client(mut stream: TcpStream) {
 }
 
 // controllers
+fn handle_status_request(request: &str) -> (String, String) {
+    (OK_RESPONSE.to_owned(), "Server is running".to_owned())
+}
+
 fn handle_post_request(request: &str) -> (String, String) {
     match (
         get_user_request_body(&request),
@@ -80,7 +85,7 @@ fn handle_post_request(request: &str) -> (String, String) {
         (Ok(user), Ok(mut client)) => {
             client
                 .execute(
-                    "INSERT INTO users (name, email) VALUES ($1, &2)",
+                    "INSERT INTO users (name, email) VALUES ($1, $2)",
                     &[&user.name, &user.email],
                 )
                 .unwrap();
