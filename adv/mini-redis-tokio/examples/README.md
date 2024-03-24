@@ -1,6 +1,4 @@
-# Tokio Example - Mini Redis Client
-
-> From the tokio docs: https://tokio.rs/tokio/tutorial
+# [Tokio client](/README.md)
 
 ### Run mini-redis-server on a seperate terminal
 
