@@ -22,3 +22,7 @@ qemu-system-x86_64 -drive format=raw,file=target/x86_64-rusty_os/debug/bootimage
 ```bash
 cargo run
 ```
+
+##### Track
+
+continue from https://os.phil-opp.com/testing/#serial-port
