@@ -25,4 +25,4 @@ cargo run
 
 ##### Track
 
-continue from https://os.phil-opp.com/testing/#testing-the-vga-buffer
+continue from https://os.phil-opp.com/testing/#integration-tests

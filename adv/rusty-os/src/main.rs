@@ -31,6 +31,7 @@ pub extern "C" fn _start() -> ! {
     // custom entry point
 
     println!("Namaste, world{}", "!");
+    println!("☺");
 
     #[cfg(test)]
     test_main();
@@ -76,9 +77,4 @@ pub fn test_runner(tests: &[&dyn Testable]) {
         test.run();
     }
     exit_qemu(QemuExitCode::Success);
-}
-
-#[test_case]
-fn trivial_assertion() {
-    assert_eq!(1, 1);
 }

@@ -3,6 +3,8 @@ use lazy_static::lazy_static;
 use spin::Mutex;
 use volatile::Volatile;
 
+use crate::serial_println;
+
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)] // repr(u8) tells the compiler to represent the enum as an u8
@@ -147,4 +149,67 @@ macro_rules! println {
 pub fn _print(args: fmt::Arguments) {
     use core::fmt::Write;
     WRITER.lock().write_fmt(args).unwrap();
+}
+
+#[test_case]
+fn test_println_simple() {
+    println!("test_println_simple output");
+}
+
+#[test_case]
+fn test_println_many() {
+    for _ in 0..200 {
+        println!("test_println_many output");
+    }
+}
+
+#[test_case]
+fn test_println_output() {
+    let s = "Some test string that fits on a single line";
+    println!("{}", s);
+    for (i, c) in s.chars().enumerate() {
+        let screen_char = WRITER.lock().buffer.chars[BUFFER_HEIGHT - 2][i].read();
+        assert_eq!(char::from(screen_char.ascii_character), c);
+    }
+}
+
+#[test_case]
+fn test_println_long_line_creates_no_panic() {
+    for _ in 0..10 {
+        println!(
+            "A short story: Ivan’s family is healthy, hard-working and prosperous and they live happily. The balance is upset by a feud with their neighbor, Gabriel. A hen belonging to Ivan’s daughter-in-law flew into Gabriel’s yard and laid an egg. When she inquires about it, Gabriel’s mother respond rudely. It quickly escalates into name calling and a shouting match. Legal proceeding  follow. Ivan’s father, who used to run the farm, advises his family to reconcile, and not let this disagreement over a trifle get out of hand. His words go unheeded, and quarreling becomes a daily occurrence."
+        );
+    }
+}
+
+#[test_case]
+fn test_println_long_line_wraps_correctly() {
+    let s = "A short story Ivans family is healthy hardworking and prosperous and they live happily The balance is upset"; // removing all special characters
+    let s_line_1_expected =
+        "A short story Ivans family is healthy hardworking and prosperous and they live h"; // MAX_WIDTH = 80
+    println!("{}", s);
+    for (i, c) in s_line_1_expected.chars().enumerate() {
+        let screen_char = WRITER.lock().buffer.chars[(BUFFER_HEIGHT - 3)][i].read(); // line split into 2 lines so -3
+        assert_eq!(char::from(screen_char.ascii_character), c);
+    }
+    let s_line_2_expected = "appily The balance is upset";
+    for (i, c) in s_line_2_expected.chars().enumerate() {
+        let screen_char = WRITER.lock().buffer.chars[(BUFFER_HEIGHT - 2)][i].read(); // line split into 2 lines so -2
+        assert_eq!(char::from(screen_char.ascii_character), c);
+    }
+}
+
+#[test_case]
+fn test_println_correctly_prints_non_printable_chars() {
+    println!("☺");
+    // Note: ☺ is a character which takes 3 bytes to store
+    let screen_char_1 = WRITER.lock().buffer.chars[BUFFER_HEIGHT - 2][0].read();
+    let screen_char_2 = WRITER.lock().buffer.chars[BUFFER_HEIGHT - 2][1].read();
+    let screen_char_3 = WRITER.lock().buffer.chars[BUFFER_HEIGHT - 2][2].read();
+    let screen_char_4 = WRITER.lock().buffer.chars[BUFFER_HEIGHT - 2][3].read();
+    assert_eq!(screen_char_1.ascii_character, u8::from(0xfe)); // 0xfe is the unicode for ■
+    assert_eq!(screen_char_2.ascii_character, u8::from(0xfe));
+    assert_eq!(screen_char_3.ascii_character, u8::from(0xfe));
+    assert_ne!(screen_char_4.ascii_character, u8::from(0xfe));
+    assert_eq!(screen_char_4.ascii_character, u8::from(0x20)); // 0x20 is the unicode for space
 }
